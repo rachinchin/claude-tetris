@@ -26,29 +26,60 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           claude_args: |
-            --allowed-tools "Bash(gh label list:*),Bash(gh issue edit:*),Bash(gh issue comment:*),Bash(gh issue view:*)"
+            --allowed-tools "Bash(gh issue view:*),Bash(gh issue edit:*),Bash(gh issue comment:*),Bash(gh api:*)"
           prompt: |
             Estás analizando el issue #${{ github.event.issue.number }} de este repositorio
-            ("${{ github.event.issue.title }}").
+            ("${{ github.event.issue.title }}"). Este repo es un Tetris clásico en JavaScript
+            vanilla puro (index.html, style.css, game.js, ~300 líneas, sin build ni deps).
+            Puntos clave de la arquitectura de game.js, útiles para diagnosticar:
+              - `collide(shape, ox, oy)` es la única función que valida límites del tablero y
+                solapamiento; la usan movimiento, rotación y el ghost piece.
+              - `tryRotate` hace wall kicks probando desplazamientos [0,-1,1,-2,2] columnas.
+              - `loop` acumula delta time en `dropAccum` contra `dropInterval` para bajar la pieza.
+              - `lockPiece` (merge + clearLines + spawn) fija la pieza al colisionar hacia abajo.
+              - `draw`/`drawNext` redibujan todo el canvas cada frame.
+              - COLS/ROWS/BLOCK en game.js deben coincidir con width/height del
+                `<canvas id="board">` en index.html.
 
             Tareas:
-            1. Ejecuta `gh label list` para ver las etiquetas disponibles en el repo.
-            2. Lee el título y cuerpo del issue con `gh issue view ${{ github.event.issue.number }}`
-               y, si hace falta, revisa el código relevante en el repositorio (index.html,
-               style.css, game.js) para entender el contexto.
-            3. Aplica con `gh issue edit ${{ github.event.issue.number }} --add-label "..."`
-               solo las etiquetas ya existentes en el repo que correspondan (tipo de issue:
-               bug, enhancement, question, documentation, etc.; y si es posible prioridad o
-               área afectada si existen esas etiquetas). No crees etiquetas nuevas. No elimines
-               etiquetas existentes. Si ya tiene las etiquetas correctas, no hagas cambios.
-            4. Publica un comentario en el issue con `gh issue comment ${{ github.event.issue.number }} --body "..."`
-               que contenga un diagnóstico general y accionable, en español, con este formato:
-               - **Resumen**: qué está pidiendo o reportando el issue en una frase.
-               - **Diagnóstico**: causa probable o análisis técnico, citando archivo(s) y
-                 función(es) concretas de game.js/index.html/style.css cuando aplique.
-               - **Alcance sugerido**: qué archivos y funciones habría que tocar para
-                 implementar la solución.
-               - **Riesgos/dudas**: cualquier ambigüedad que convenga aclarar con quien
-                 reportó el issue antes de implementar.
 
-            No hagas cambios de código en este workflow, solo etiqueta y comenta el issue.
+            1. Ejecuta `gh issue view ${{ github.event.issue.number }} --json title,body,labels,comments`
+               para leer el issue completo, sus labels actuales y comentarios existentes.
+            2. Si hace falta, revisa el código relevante del checkout (index.html, style.css,
+               game.js) para fundamentar el diagnóstico con funciones y líneas concretas.
+            3. Etiquetado — usa EXCLUSIVAMENTE esta lista cerrada de labels, que son las únicas
+               que existen en el repo (no inventes ni crees otras, no uses `gh label create`):
+               bug, documentation, duplicate, enhancement, good first issue, help wanted,
+               invalid, question, wontfix.
+               Aplica las que correspondan con `gh issue edit ${{ github.event.issue.number }} --add-label "nombre"`.
+               No quites labels que ya haya puesto una persona. Si ya están correctas, no
+               cambies nada.
+            4. Diagnóstico — arma el cuerpo del comentario en español con exactamente este
+               formato, empezando siempre por la línea del marcador oculto:
+
+               <!-- claude-triage -->
+               **Resumen**: qué pide o reporta el issue, en una frase.
+
+               **Diagnóstico**: causa probable o análisis técnico, citando archivo(s) y
+               función(es) concretas (p. ej. `collide()`, `tryRotate()`, `lockPiece()` en
+               game.js) cuando aplique.
+
+               **Alcance sugerido**: qué archivos y funciones habría que tocar para
+               implementar la solución.
+
+               **Riesgos/dudas**: ambigüedades que convenga aclarar con quien reportó el
+               issue antes de implementar.
+
+            5. Publicación — evita duplicar comentarios en ediciones sucesivas del issue:
+               a. Busca si ya existe un comentario propio con el marcador, usando:
+                  `gh api repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments --jq '.[] | select(.body | contains("<!-- claude-triage -->")) | .id'`
+               b. Escribe el cuerpo del diagnóstico a un archivo temporal (para evitar
+                  problemas de escaping de markdown multilínea en shell).
+               c. Si ya existe un id de comentario previo, actualízalo con:
+                  `gh api --method PATCH repos/${{ github.repository }}/issues/comments/<id> -f body=@archivo`
+                  Si NO existe, créalo con:
+                  `gh issue comment ${{ github.event.issue.number }} --body-file archivo`
+               Nunca dejes más de un comentario de triage en el mismo issue.
+
+            No modifiques código ni abras pull requests desde este workflow — solo etiqueta y
+            comenta el issue.
