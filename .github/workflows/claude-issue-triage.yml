@@ -54,8 +54,14 @@ jobs:
                Aplica las que correspondan con `gh issue edit ${{ github.event.issue.number }} --add-label "nombre"`.
                No quites labels que ya haya puesto una persona. Si ya están correctas, no
                cambies nada.
-            4. Diagnóstico — arma el cuerpo del comentario en español con exactamente este
-               formato, empezando siempre por la línea del marcador oculto:
+            4. Diagnóstico — arma el cuerpo del comentario en español usando **GitHub
+               Flavored Markdown** válido (el que GitHub renderiza en comentarios de issue):
+               negritas con `**`, listas con `-`, código en línea con backticks y bloques de
+               código con triple backtick indicando el lenguaje (```js). Deja una línea en
+               blanco entre párrafos y secciones para que GitHub separe los bloques. No uses
+               HTML crudo salvo el marcador oculto, ni sintaxis que GitHub no soporte.
+               Sigue exactamente este formato, empezando siempre por la línea del marcador
+               oculto:
 
                <!-- claude-triage -->
                **Resumen**: qué pide o reporta el issue, en una frase.
