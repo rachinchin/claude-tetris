@@ -14,6 +14,10 @@ const COLORS = [
   '#64b5f6', // J - pale blue
   '#ffb74d', // L - orange
   '#90a4ae', // N - nut / tuerca (acero)
+  '#4db6ac', // 9  + (plus)   - verde azulado
+  '#a1887f', // 10 U          - marrón
+  '#9575cd', // 11 Y          - violeta
+  '#f06292', // 12 single 1×1 - rosa (recompensa)
 ];
 
 const PIECES = [
@@ -26,9 +30,17 @@ const PIECES = [
   [[6,0,0],[6,6,6],[0,0,0]],                  // J
   [[0,0,7],[7,7,7],[0,0,0]],                  // L
   [[8,8,8],[8,0,8],[8,8,8]],                  // N - tuerca
+  [[0,9,0],[9,9,9],[0,9,0]],                          // + (pentominó X)
+  [[10,0,10],[10,10,10],[0,0,0]],                     // U
+  [[0,11,0,0],[11,11,0,0],[0,11,0,0],[0,11,0,0]],     // Y
+  [[12]],                                             // 1×1 (recompensa)
 ];
 
 const LINE_SCORES = [0, 100, 300, 500, 800];
+const STANDARD_TYPES = 8;        // tipos 1..8 salen al azar (7 estándar + N)
+const PENTOMINOS = [9, 10, 11];  // +, U, Y
+const SINGLE = 12;               // solo como recompensa, nunca al azar
+const PENTO_CHANCE = 0.12;
 
 const canvas = document.getElementById('board');
 const ctx = canvas.getContext('2d');
@@ -45,6 +57,7 @@ const themeSwitch = document.getElementById('theme-switch');
 
 let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
 let gridColor, blockHighlight;
+let rewardQueue;
 
 function updateThemeColors() {
   const style = getComputedStyle(document.body);
@@ -56,8 +69,15 @@ function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
 }
 
+function nextType() {
+  if (rewardQueue.length) return rewardQueue.shift();
+  if (Math.random() < PENTO_CHANCE)
+    return PENTOMINOS[Math.floor(Math.random() * PENTOMINOS.length)];
+  return Math.floor(Math.random() * STANDARD_TYPES) + 1;
+}
+
 function randomPiece() {
-  const type = Math.floor(Math.random() * 8) + 1;
+  const type = nextType();
   const shape = PIECES[type].map(row => [...row]);
   return { type, shape, x: Math.floor(COLS / 2) - Math.floor(shape[0].length / 2), y: 0 };
 }
@@ -118,6 +138,7 @@ function clearLines() {
     score += (LINE_SCORES[cleared] || 0) * level;
     level = Math.floor(lines / 10) + 1;
     dropInterval = Math.max(100, 1000 - (level - 1) * 90);
+    if (cleared === 4) rewardQueue.push(SINGLE);
     updateHUD();
   }
 }
@@ -222,8 +243,8 @@ function drawNext() {
   const NB = 30;
   nextCtx.clearRect(0, 0, nextCanvas.width, nextCanvas.height);
   const shape = next.shape;
-  const offX = Math.floor((4 - shape[0].length) / 2);
-  const offY = Math.floor((4 - shape.length) / 2);
+  const offX = (4 - shape[0].length) / 2;
+  const offY = (4 - shape.length) / 2;
   for (let r = 0; r < shape.length; r++)
     for (let c = 0; c < shape[r].length; c++)
       drawBlock(nextCtx, offX + c, offY + r, shape[r][c], NB);
@@ -282,6 +303,7 @@ function init() {
   gameOver = false;
   dropInterval = 1000;
   dropAccum = 0;
+  rewardQueue = [];
   lastTime = performance.now();
   next = randomPiece();
   spawn();
