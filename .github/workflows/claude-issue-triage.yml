@@ -1,0 +1,54 @@
+name: Claude Issue Triage
+
+on:
+  issues:
+    types: [opened, edited]
+
+jobs:
+  triage:
+    if: github.event.issue.pull_request == null
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude Issue Triage
+        id: claude
+        uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: |
+            --allowed-tools "Bash(gh label list:*),Bash(gh issue edit:*),Bash(gh issue comment:*),Bash(gh issue view:*)"
+          prompt: |
+            Estás analizando el issue #${{ github.event.issue.number }} de este repositorio
+            ("${{ github.event.issue.title }}").
+
+            Tareas:
+            1. Ejecuta `gh label list` para ver las etiquetas disponibles en el repo.
+            2. Lee el título y cuerpo del issue con `gh issue view ${{ github.event.issue.number }}`
+               y, si hace falta, revisa el código relevante en el repositorio (index.html,
+               style.css, game.js) para entender el contexto.
+            3. Aplica con `gh issue edit ${{ github.event.issue.number }} --add-label "..."`
+               solo las etiquetas ya existentes en el repo que correspondan (tipo de issue:
+               bug, enhancement, question, documentation, etc.; y si es posible prioridad o
+               área afectada si existen esas etiquetas). No crees etiquetas nuevas. No elimines
+               etiquetas existentes. Si ya tiene las etiquetas correctas, no hagas cambios.
+            4. Publica un comentario en el issue con `gh issue comment ${{ github.event.issue.number }} --body "..."`
+               que contenga un diagnóstico general y accionable, en español, con este formato:
+               - **Resumen**: qué está pidiendo o reportando el issue en una frase.
+               - **Diagnóstico**: causa probable o análisis técnico, citando archivo(s) y
+                 función(es) concretas de game.js/index.html/style.css cuando aplique.
+               - **Alcance sugerido**: qué archivos y funciones habría que tocar para
+                 implementar la solución.
+               - **Riesgos/dudas**: cualquier ambigüedad que convenga aclarar con quien
+                 reportó el issue antes de implementar.
+
+            No hagas cambios de código en este workflow, solo etiqueta y comenta el issue.
