@@ -2,6 +2,18 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Idioma
+
+Toda la comunicación de este proyecto es en **español**. Esto incluye:
+
+- Las respuestas y explicaciones al usuario.
+- Los mensajes de commit y los títulos/descripciones de pull request.
+- Los comentarios en issues y pull requests, incluidos los que generan los workflows de
+  GitHub Actions.
+
+El código, los identificadores, los nombres de archivo y los comentarios ya existentes se
+mantienen en su idioma original — la regla aplica al texto dirigido a personas, no al código.
+
 ## Project
 
 Tetris clásico implementado en JavaScript vanilla puro, HTML5 Canvas y CSS. Sin dependencias, sin `package.json`, sin bundler ni transpilador. Todo el código vive en 3 archivos: `index.html`, `style.css`, `game.js` (~300 líneas).
